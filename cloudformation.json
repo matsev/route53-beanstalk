@@ -1,14 +1,19 @@
 
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
-
-  "Description" : "AWS CloudFormation Sample Template ElasticBeanstalk_Nodejs_Sample: Configure and launch the AWS Elastic Beanstalk sample application. **WARNING** This template creates one or more Amazon EC2 instances. You will be billed for the AWS resources used if you create a stack from this template.",
+  "Description" : "AWS CloudFormation Sample Template that shows how Route53 is configured with Elastic Beanstalk. It is based on the \"Elastic Beanstalk Node.js sample application\" available at http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/sample-templates-services-eu-west-1.html#d0e136547.",
 
   "Parameters" : {
     "KeyName": {
       "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the AWS Elastic Beanstalk instance",
       "Type": "AWS::EC2::KeyPair::KeyName",
       "ConstraintDescription" : "must be the name of an existing EC2 KeyPair."
+    },
+    "DomainName" : {
+      "Description" : "The domain name of the app",
+      "Type" : "String",
+      "Default" : "example.com",
+      "ConstraintDescription" : "Must be valid domain name"
     }
   },
 
@@ -25,11 +30,40 @@
       "sa-east-1"      : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
       "cn-north-1"     : { "EC2Principal" : "ec2.amazonaws.com.cn", "OpsWorksPrincipal" : "opsworks.amazonaws.com.cn" },
       "eu-central-1"   : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" }
-    }
+    },
 
+    "Beanstalk2Route53HostedZoneId" : {
+      "us-east-1"      : { "HostedZoneId": "Z3DZXE0Q79N41H" },
+      "us-west-1"      : { "HostedZoneId": "Z1M58G0W56PQJA" },
+      "us-west-2"      : { "HostedZoneId": "Z33MTJ483KN6FU" },
+      "eu-west-1"      : { "HostedZoneId": "Z3NF1Z3NOM5OY2" },
+      "ap-northeast-1" : { "HostedZoneId": "Z2YN17T5R711GT" },
+      "ap-southeast-1" : { "HostedZoneId": "Z1WI8VXHPB1R38" },
+      "sa-east-1"      : { "HostedZoneId": "Z2ES78Y61JGQKS" }
+    }
   },
 
   "Resources" : {
+    "SampleHostedZone": {
+      "Type" : "AWS::Route53::HostedZone",
+      "Properties" : {
+        "Name" : { "Ref" : "DomainName" }
+      }
+    },
+
+    "SampleRecordSet" : {
+      "Type" : "AWS::Route53::RecordSet",
+      "Properties" : {
+        "AliasTarget" : {
+          "DNSName" : { "Fn::GetAtt" : ["SampleEnvironment", "EndpointURL"] },
+          "HostedZoneId" : { "Fn::FindInMap" : [ "Beanstalk2Route53HostedZoneId", {"Ref" : "AWS::Region"}, "HostedZoneId" ]}
+        },
+        "HostedZoneId" : { "Ref": "SampleHostedZone" },
+        "Name" : { "Ref" : "DomainName" },
+        "Type" : "A"
+      }
+    },
+
     "WebServerRole": {
       "Type": "AWS::IAM::Role",
       "Properties" : {
